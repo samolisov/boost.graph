@@ -19,16 +19,9 @@ int main()
         = { "pick up kids from school", "buy groceries (and snacks)",
               "get cash at ATM", "drop off kids at soccer practice",
               "cook dinner", "pick up kids from soccer", "eat dinner" };
-    const int n_tasks = sizeof(tasks) / sizeof(char*);
 
-    std::vector< std::list< int > > g(n_tasks);
-    g[0].push_back(3);
-    g[1].push_back(3);
-    g[1].push_back(4);
-    g[2].push_back(1);
-    g[3].push_back(5);
-    g[4].push_back(6);
-    g[5].push_back(6);
+    std::vector< std::list< int > > g
+        = { { 3 }, { 3, 4 }, { 1 }, { 5 }, { 6 }, { 6 }, {} };
 
     std::deque< int > topo_order;
 
@@ -36,8 +29,7 @@ int main()
         vertex_index_map(identity_property_map()));
 
     int n = 1;
-    for (std::deque< int >::iterator i = topo_order.begin();
-         i != topo_order.end(); ++i, ++n)
+    for (auto i = topo_order.begin(); i != topo_order.end(); ++i, ++n)
         std::cout << tasks[*i] << std::endl;
 
     return EXIT_SUCCESS;
