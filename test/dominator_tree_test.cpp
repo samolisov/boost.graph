@@ -24,13 +24,48 @@ struct DominatorCorrectnessTestSet
 
 using namespace boost;
 
-typedef adjacency_list< listS, listS, bidirectionalS,
-    property< vertex_index_t, std::size_t >, no_property >
-    G;
+// a workaround for the C++ standard before C++17, after switching to C++17,
+// the method may be just inlined into the run_test() with constexpr if.
+namespace detail {
 
-int main(int, char*[])
+template < bool IsRandomAccessAdjacentList = true>
+struct GraphIndexer {
+    template <typename Graph>
+    static void index_graph(Graph &g) {
+        // nothing to do for already indexed adjacent list
+    }
+};
+
+template <>
+struct GraphIndexer<false> {
+    template <typename Graph>
+    static void index_graph(Graph &g) {
+        using IndexMap = typename property_map< Graph, vertex_index_t >::type;
+        IndexMap indexMap(get(vertex_index, g));
+        typename graph_traits< Graph >::vertex_iterator uItr, uEnd;
+        int j = 0;
+        for (boost::tie(uItr, uEnd) = vertices(g); uItr != uEnd; ++uItr, ++j)
+        {
+            put(indexMap, *uItr, j);
+        }
+    }
+};
+
+} // namespace detail
+
+template < typename Graph >
+void index_graph(Graph &g) {
+    using Traits = adjacency_list_traits< typename Graph::out_edge_list_selector,
+                typename Graph::vertex_list_selector,
+                typename Graph::directed_selector,
+                typename Graph::edge_list_selector >;
+    ::detail::GraphIndexer< Traits::is_rand_access::value >::index_graph(g);
+}
+
+template < typename Graph >
+void run_test()
 {
-    typedef DominatorCorrectnessTestSet::edge edge;
+    using edge = DominatorCorrectnessTestSet::edge;
 
     DominatorCorrectnessTestSet testSet[7];
 
@@ -217,34 +252,32 @@ int main(int, char*[])
     {
         const int numOfVertices = testSet[i].numOfVertices;
 
-        G g(testSet[i].edges.begin(), testSet[i].edges.end(), numOfVertices);
+        Graph g(testSet[i].edges.begin(), testSet[i].edges.end(), numOfVertices);
 
-        typedef graph_traits< G >::vertex_descriptor Vertex;
-        typedef property_map< G, vertex_index_t >::type IndexMap;
-        typedef iterator_property_map< vector< Vertex >::iterator, IndexMap >
-            PredMap;
+        using Vertex = typename graph_traits< Graph >::vertex_descriptor;
+        using IndexMap = typename property_map< Graph, vertex_index_t >::type;
+        IndexMap indexMap(get(vertex_index, g));
+        using PredMap
+            = iterator_property_map< typename vector< Vertex >::iterator, IndexMap >;
+
+        index_graph(g);
 
         vector< Vertex > domTreePredVector, domTreePredVector2;
-        IndexMap indexMap(get(vertex_index, g));
-        graph_traits< G >::vertex_iterator uItr, uEnd;
-        int j = 0;
-        for (boost::tie(uItr, uEnd) = vertices(g); uItr != uEnd; ++uItr, ++j)
-        {
-            put(indexMap, *uItr, j);
-        }
 
         // Lengauer-Tarjan dominator tree algorithm
         domTreePredVector = vector< Vertex >(
-            num_vertices(g), graph_traits< G >::null_vertex());
+            num_vertices(g), graph_traits< Graph >::null_vertex());
         PredMap domTreePredMap
             = make_iterator_property_map(domTreePredVector.begin(), indexMap);
 
         lengauer_tarjan_dominator_tree(g, vertex(0, g), domTreePredMap);
 
         vector< int > idom(num_vertices(g));
+        typename graph_traits< Graph >::vertex_iterator uItr, uEnd;
         for (boost::tie(uItr, uEnd) = vertices(g); uItr != uEnd; ++uItr)
         {
-            if (get(domTreePredMap, *uItr) != graph_traits< G >::null_vertex())
+            if (get(domTreePredMap, *uItr)
+                != graph_traits< Graph >::null_vertex())
                 idom[get(indexMap, *uItr)]
                     = get(indexMap, get(domTreePredMap, *uItr));
             else
@@ -260,7 +293,7 @@ int main(int, char*[])
 
         // compare results of fast version and slow version of dominator tree
         domTreePredVector2 = vector< Vertex >(
-            num_vertices(g), graph_traits< G >::null_vertex());
+            num_vertices(g), graph_traits< Graph >::null_vertex());
         domTreePredMap
             = make_iterator_property_map(domTreePredVector2.begin(), indexMap);
 
@@ -269,7 +302,8 @@ int main(int, char*[])
         vector< int > idom2(num_vertices(g));
         for (boost::tie(uItr, uEnd) = vertices(g); uItr != uEnd; ++uItr)
         {
-            if (get(domTreePredMap, *uItr) != graph_traits< G >::null_vertex())
+            if (get(domTreePredMap, *uItr)
+                != graph_traits< Graph >::null_vertex())
                 idom2[get(indexMap, *uItr)]
                     = get(indexMap, get(domTreePredMap, *uItr));
             else
@@ -283,6 +317,17 @@ int main(int, char*[])
         for (k = 0; k < num_vertices(g); ++k)
             BOOST_TEST(domTreePredVector[k] == domTreePredVector2[k]);
     }
+}
+
+int main(int, char*[])
+{
+    using AdjacencyListList = adjacency_list< listS, listS, bidirectionalS,
+        property< vertex_index_t, std::size_t >, no_property >;
+
+    using AdjacencyListVec = adjacency_list< listS, vecS, bidirectionalS >;
+
+    run_test< AdjacencyListList >();
+    run_test< AdjacencyListVec >();
 
     return boost::report_errors();
 }
