@@ -22,8 +22,7 @@
  *           https://github.com/google/benchmark?tab=readme-ov-file#installation
  *
  * compilation:
- * $ clang++ -O2 -o dominator_tree_benchmark -I ~/dev/boost/libs/graph/include/
- * \
+ * $ clang++ -O2 -o dominator_tree_benchmark -I ~/dev/boost/libs/graph/include/ \
  *   -I ~/dev/boost -I ~/dev/benchmark/include/ dominator_tree_benchmark.cpp \
  *   -L ~/dev/benchmark/build/src/ -lbenchmark -lpthread
  *
@@ -94,7 +93,7 @@ template <typename Graph>
 void BM_DominatorTree(benchmark::State &state, GraphEdgeSet testSet) {
   Graph g(testSet.edges.begin(), testSet.edges.end(), testSet.numOfVertices);
 
-  using IndexMap = property_map<Graph, vertex_index_t>::type;
+  using IndexMap = typename property_map<Graph, vertex_index_t>::type;
   IndexMap indexMap(get(vertex_index, g));
 
   using Traits = adjacency_list_traits<typename Graph::out_edge_list_selector,
