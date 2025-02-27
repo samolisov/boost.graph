@@ -67,18 +67,14 @@ namespace detail
     // with the lowest semidominator (`best`). Placing these predecessors in a
     // structure let us organize a "vector of structs" what improves cache
     // efficiency.
-    template < class Graph > struct preds
+    template < class Graph >
+    struct vertex_triple
     {
-        preds()
-        : semi(graph_traits< Graph >::null_vertex())
-        , ancestor(graph_traits< Graph >::null_vertex())
-        , best(graph_traits< Graph >::null_vertex())
-        {
-        }
+        using Vertex = typename graph_traits< Graph >::vertex_descriptor;
 
-        typedef typename graph_traits< Graph >::vertex_descriptor Vertex;
-
-        Vertex semi, ancestor, best;
+        Vertex semi { graph_traits< Graph >::null_vertex() };
+        Vertex ancestor { graph_traits< Graph >::null_vertex() };
+        Vertex best { graph_traits< Graph >::null_vertex() };
     };
 
     template < class Graph, class IndexMap, class TimeMap, class PredMap,
@@ -153,7 +149,7 @@ namespace detail
                 if (get(dfnumMap, s2) < get(dfnumMap, s))
                     s = s2;
             }
-            preds< Graph >& preds_of_n = get(predsMap_, n);
+            auto& preds_of_n = get(predsMap_, n);
             preds_of_n.semi = s;
 
             // 2. Calculation of n's dominator is deferred until
@@ -195,14 +191,14 @@ namespace detail
             const Vertex& v, const TimeMap& dfnumMap)
         {
             const Vertex a(get(predsMap_, v).ancestor);
-            const preds< Graph >& preds_of_a = get(predsMap_, a);
+            const auto& preds_of_a = get(predsMap_, a);
 
-            preds< Graph >& preds_of_v = get(predsMap_, v);
+            auto& preds_of_v = get(predsMap_, v);
 
             if (preds_of_a.ancestor != graph_traits< Graph >::null_vertex())
             {
                 const Vertex b(ancestor_with_lowest_semi_(a, dfnumMap));
-                const preds< Graph >& preds_of_b = get(predsMap_, b);
+                const auto& preds_of_b = get(predsMap_, b);
 
                 preds_of_v.ancestor = preds_of_a.ancestor;
 
@@ -214,8 +210,8 @@ namespace detail
             return preds_of_v.best;
         }
 
-        std::vector< preds< Graph > > preds_;
-        iterator_property_map< typename std::vector< preds< Graph > >::iterator,
+        std::vector< vertex_triple< Graph > > preds_;
+        iterator_property_map< typename std::vector< vertex_triple< Graph > >::iterator,
             IndexMap >
             predsMap_;
 
