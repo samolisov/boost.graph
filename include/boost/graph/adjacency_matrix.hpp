@@ -827,7 +827,7 @@ typename adjacency_matrix< D, VP, EP, GP, A >::degree_size_type in_degree(
     return n;
 }
 
-// degree
+// O(N)
 template < typename VP, typename EP, typename GP, typename A >
 typename adjacency_matrix< directedS, VP, EP, GP, A >::degree_size_type
 degree(
@@ -837,6 +837,7 @@ degree(
     return in_degree(u, g) + out_degree(u, g);
 }
 
+// O(N)
 template < typename VP, typename EP, typename GP, typename A >
 typename adjacency_matrix< undirectedS, VP, EP, GP, A >::degree_size_type
 degree(
