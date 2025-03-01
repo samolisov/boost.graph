@@ -150,13 +150,11 @@ namespace detail
                     s = s2;
             }
             auto& preds_of_n = get(predsMap_, n);
-            preds_of_n.semi = s;
+            preds_of_n = {s, p, n};
 
             // 2. Calculation of n's dominator is deferred until
             // the path from s to n has been linked into the forest
             get(bucketMap_, s).push_back(n);
-            preds_of_n.ancestor = p;
-            preds_of_n.best = n;
 
             // 3. Now that the path from p to v has been linked into
             // the spanning forest, these lines calculate the dominator of v,
