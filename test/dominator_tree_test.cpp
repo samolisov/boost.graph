@@ -9,6 +9,7 @@
 #include <iostream>
 #include <algorithm>
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/adjacency_matrix.hpp>
 #include <boost/graph/dominator_tree.hpp>
 
 using namespace std;
@@ -26,40 +27,43 @@ using namespace boost;
 
 // a workaround for the C++ standard before C++17, after switching to C++17,
 // the method may be just inlined into the run_test() with constexpr if.
-namespace detail {
+namespace detail
+{
 
-template < bool IsRandomAccessAdjacentList = true>
-struct GraphIndexer {
-    template <typename Graph>
-    static void index_graph(Graph &g) {
-        // nothing to do for already indexed adjacent list
-    }
-};
+template < typename Graph >
+void index_graph(Graph&, std::true_type /*IsRandomAccessAdjacentList*/)
+{
+    // nothing to do for already indexed adjacent list
+}
 
-template <>
-struct GraphIndexer<false> {
-    template <typename Graph>
-    static void index_graph(Graph &g) {
-        using IndexMap = typename property_map< Graph, vertex_index_t >::type;
-        IndexMap indexMap(get(vertex_index, g));
-        typename graph_traits< Graph >::vertex_iterator uItr, uEnd;
-        int j = 0;
-        for (boost::tie(uItr, uEnd) = vertices(g); uItr != uEnd; ++uItr, ++j)
-        {
-            put(indexMap, *uItr, j);
-        }
+template < typename Graph >
+void index_graph(Graph& g, std::false_type /*IsRandomAccessAdjacentList*/)
+{
+    using IndexMap = typename property_map< Graph, vertex_index_t >::type;
+    IndexMap indexMap(get(vertex_index, g));
+    typename graph_traits< Graph >::vertex_iterator uItr, uEnd;
+    int j = 0;
+    for (boost::tie(uItr, uEnd) = vertices(g); uItr != uEnd; ++uItr, ++j)
+    {
+        put(indexMap, *uItr, j);
     }
-};
+}
 
 } // namespace detail
 
-template < typename Graph >
-void index_graph(Graph &g) {
-    using Traits = adjacency_list_traits< typename Graph::out_edge_list_selector,
-                typename Graph::vertex_list_selector,
-                typename Graph::directed_selector,
-                typename Graph::edge_list_selector >;
-    ::detail::GraphIndexer< Traits::is_rand_access::value >::index_graph(g);
+template < typename OEL, typename VL, typename D, typename VP, typename EP,
+    typename GP, typename EL >
+void index_graph(adjacency_list< OEL, VL, D, VP, EP, GP, EL >& g)
+{
+    using Traits = adjacency_list_traits< OEL, VL, D, EL >;
+    ::detail::index_graph(
+        g, std::integral_constant< bool, Traits::is_rand_access::value > {});
+}
+
+template < typename D, typename VP, typename EP, typename GP, typename A >
+void index_graph(adjacency_matrix<D, VP, EP, GP, A>&)
+{
+    // nothing to do for already indexed adjacent matrix
 }
 
 template < typename Graph >
@@ -317,6 +321,7 @@ void run_test()
         for (k = 0; k < num_vertices(g); ++k)
             BOOST_TEST(domTreePredVector[k] == domTreePredVector2[k]);
     }
+    cout << endl;
 }
 
 int main(int, char*[])
@@ -326,8 +331,11 @@ int main(int, char*[])
 
     using AdjacencyListVec = adjacency_list< listS, vecS, bidirectionalS >;
 
+    using AdjacencyMatrix = adjacency_matrix< directedS >;
+
     run_test< AdjacencyListList >();
     run_test< AdjacencyListVec >();
+    run_test< AdjacencyMatrix >();
 
     return boost::report_errors();
 }
